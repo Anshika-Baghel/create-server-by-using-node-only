@@ -1,37 +1,115 @@
-// how NodeJS differs from Vanilla Js
-// 1) Node runs on a server not in a browser(backend not frontend)
-// 2)The console is the terminal window.
-// To run console directly in the terminal write node in the vs code terminal and hit enter.
-// T exit console in the vs code terminal press ctrl+c hit enter and then again press ctrl+c and hit enter.
-console.log('Hello world')
-// In order to execute the file type node filename.js in the terminal and ten hit enter or we can just simply type node filename and hit enter.
-// global object instead of window object
-// global is the keyword for global object.
-//console.log(global)
-// NodeJS has core modules that Vanilla Js does not have.
-// CommonJS modules instead of ES6 modules.
-const os=require('os')
-const path=require('path')
-//const math=require('./math')
-// we would have done destructure then also it would work fine
+const http=require('http');
+const path=require('path');
+const fs=require('fs');
+const fsPromises=require('fs').promises;
 
-//now how do we destructure a function
-const {add,subtract,multiply,division}=require('./math')
+const logEvents=require('./logEvents');
 
-console.log(add(3,8))
-console.log(subtract(3,8))
-console.log(multiply(3,8))
-console.log(division(3,8))
-// console.log(os.type())
-// console.log(os.version())
-// console.log(os.homedir())  //homedir -> home directory
-// console.log(os.type())
+const EventEmitter=require('events');
 
-// console.log(__dirname)
-// console.log(__filename)
-// console.log(path.dirname(__filename))
-// console.log(path.basename(__filename))
-// console.log(path.extname(__filename))  //extname ->extension name and __ ->this is double underscore.
+class Emitter extends EventEmitter {};
+
+//initialize object
+
+const myEmitter=new Emitter();
+const PORT=process.env.PORT ||3500;
 
 
-// console.log(path.parse(__filename))  //
+const serveFile=async(filePath,contentType,response)=>{
+
+    try{
+        const rawData =await fsPromises.readFile(
+            
+            filePath,
+            !contentType.includes(image) ? 'utf8' :''
+        );
+        const data=contentType==='application/json'
+        ?JSON.parse(rawData) :rawData;
+        response.writeHead(200,{'Content-Type':contentType});
+        response.end(
+
+            contentType==='application/json'?JSON.stringify(data) : data
+
+        );
+    }
+
+    catch(err){
+        console.log(err);
+        response.statusCode=500;
+        response.end();
+    }
+}
+
+const server=http.createServer((req,res)=>{
+    console.log(req.url,req.method);
+
+    const extension=path.extname(req.url);
+    let contentType;
+
+    switch (extension) {
+        case '.css':
+            contentType = 'text/css';
+            break;
+        case '.js':
+            contentType = 'text/javascript';
+            break;
+        case '.json':
+            contentType = 'application/json';
+            break;
+        case '.jpg':
+            contentType = 'image/jpeg';
+            break;
+        case '.png':
+            contentType = 'image/png';
+            break;
+        case '.txt':
+            contentType = 'text/plain';
+            break;
+        default:
+            contentType = 'text/html';
+    }
+
+    let filePath =
+    contentType === 'text/html' && req.url === '/'
+        ? path.join(__dirname, 'views', 'index.html')
+        : contentType === 'text/html' && req.url.slice(-1) === '/'
+            ? path.join(__dirname, 'views', req.url, 'index.html')
+            : contentType === 'text/html'
+                ? path.join(__dirname, 'views', req.url)
+                : path.join(__dirname, req.url);
+
+// makes .html extension not required in the browser
+if (!extension && req.url.slice(-1) !== '/') filePath += '.html';
+
+const fileExists = fs.existsSync(filePath);
+
+if (fileExists) {
+    serveFile(filePath, contentType, res);
+} else {
+    switch (path.parse(filePath).base) {
+        case 'old-page.html':
+            res.writeHead(301, { 'Location': '/new-page.html' });
+            res.end();
+            break;
+        case 'www-page.html':
+            res.writeHead(301, { 'Location': '/' });
+            res.end();
+            break;
+        default:
+            serveFile(path.join(__dirname, 'views', '404.html'), 'text/html', res);
+    }
+}
+
+
+
+});
+
+
+server.listen(PORT,()=>console.log(`Server running on PORT ${PORT}`));
+
+
+// myEmitter.on('log',(msg)=>logEvents(msg));
+
+
+
+//     myEmitter.emit('log','log event emitted!');
